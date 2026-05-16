@@ -1,63 +1,111 @@
 # Canvas Deadlines
 
-一个常驻 Mac 菜单栏的小程序，自动从 Canvas 日历订阅读取所有课程的作业 / 测验 / 考试，
-按截止时间由近到远显示倒计时。无需 Canvas Token，支持多个学校。
+A lightweight macOS menu bar app that shows your Canvas assignment, quiz, and
+exam deadlines as a live countdown — sorted from soonest to latest. It reads
+directly from your Canvas **calendar feed (iCal/.ics)**, so it needs **no
+Canvas API token** and works across **multiple schools** at once.
 
-## 怎么用（第一次）
+> Built for [Instructure Canvas](https://www.instructure.com/canvas) calendar
+> feeds (originally for UCLA Extension, where students cannot generate access
+> tokens). Native Swift, zero external dependencies.
 
-### 1. 打包成 App
+## Features
 
-打开「终端」，把下面这行粘进去回车（只需做一次）：
+- 🗓️ **Menu bar countdown** — every upcoming assignment / quiz / exam, sorted
+  by due date.
+- 🚦 **Urgency color bar** — at-a-glance status: 🔴 overdue · 🟠 within 1 day ·
+  🟡 within 3 days · 🟢 further out.
+- ✅ **Mark submitted / skip** — hover any item to mark it done (permanently
+  removed) or skip it; both are restorable from Settings.
+- 🏫 **Multi-school** — add a calendar feed per school; deadlines merge
+  automatically and never collide across schools.
+- 🗂️ **All / By course** — flat chronological view, or a collapsible
+  per-course accordion.
+- 🔗 **One click to Canvas** — clicking an item opens its Canvas page in the
+  browser.
+- ⚙️ **Settings** — overdue grace window, per-school feed management, custom
+  course-name overrides, and a diagnostics export for troubleshooting.
+- 🔒 **Private by design** — the feed URL (which embeds your personal token)
+  is stored in the macOS Keychain and never leaves your machine.
+- 🚀 **Launch at login** — optional, via `SMAppService` (packaged `.app` only).
 
+## Requirements
+
+- macOS 13 (Ventura) or later
+- [Xcode](https://developer.apple.com/xcode/) or the Swift toolchain (to build)
+
+## Install
+
+Clone and build the app bundle:
+
+```bash
+git clone https://github.com/EwanWu06/CanvasDeadlines.git
+cd CanvasDeadlines
+./build.sh
 ```
-cd "/Users/youyouwu/Desktop/Daily task" && ./build.sh
-```
 
-完成后会在 `dist/` 里生成 **CanvasDeadlines.app**。
+This produces **`dist/CanvasDeadlines.app`**.
 
-### 2. 运行
+- Double-click it — a calendar icon 📅 appears in the menu bar.
+- To keep it around, drag the `.app` into your **Applications** folder.
+- First launch may show *"cannot verify the developer"* (the build is
+  ad-hoc signed). **Right-click → Open → Open** once to allow it.
 
-- 双击 `dist/CanvasDeadlines.app`，屏幕顶部菜单栏会出现一个日历图标 📅
-- 想常驻：把这个 .app 拖到「应用程序」文件夹；要开机自启，去
-  系统设置 → 通用 → 登录项 → 添加它
-- 首次打开若提示「无法验证开发者」：**右键点它 → 打开 → 再点打开**（只需一次）
+## First-time setup
 
-### 3. 首次配置
+Click the menu bar icon and follow the onboarding:
 
-点菜单栏图标，按引导：
+1. Log in to Canvas (the app opens it for you).
+2. Go to **Calendar** → **Calendar Feed** (bottom-right).
+3. Copy the `.ics` link, paste it back into the app, then **Test & Save**.
 
-1. 登录 Canvas（按钮会帮你打开）
-2. 左侧 Calendar（日历）→ 右下角「Calendar Feed」
-3. 复制那个 `.ics` 链接，粘贴回 App → 测试并保存
+## Daily use
 
-## 日常使用
+- Click the menu bar icon to see what's due, soonest first.
+- Hover an item for two actions:
+  - **Submitted** — mark done and remove it permanently.
+  - **Skip** — hide it (restorable later).
+- Toggle **All / By course** at the top; by-course groups collapse — click a
+  course to expand it.
+- Click an item to open it on Canvas.
 
-- 点菜单栏图标查看最近要交的作业 / 考试，按截止时间排序
-- **左侧彩条**表示紧迫度：🔴逾期 🟠1天内 🟡3天内 🟢更远
-- 鼠标悬停某项 → 右侧出现按钮：
-  - ✅ **已交**：标记为已提交，从列表移除（永久记住）
-  - ✖️ **跳过**：忽略此项
-- 顶部「全部 / 按学科」切换；按学科是可折叠的，点课程名展开
-- 点某一项会用浏览器打开它的 Canvas 页面
+## Settings
 
-## 设置（菜单栏 → 设置）
+Open from the menu bar → Settings:
 
-- **日历订阅（多校）**：下学期在 SMC / WLAC 也有课时，在这里各加一条该校的
-  日历链接，作业会自动合并
-- **逆期天数**：超过 N 天没交的旧项不再显示（默认 3 天）
-- **已跳过 / 已标记提交**：点错了可在这里恢复
-- **课程名自定义**：某课显示成「课程 编号」时，可手动指定真实课程名
-- **关于 → 排查工具**：某作业没出现或分类不对时，导出诊断文件
+- **Calendar feeds (multi-school)** — add, test, rename, or remove a feed per
+  school; deadlines merge automatically.
+- **Overdue grace days** — hide items more than _N_ days past due (default 3).
+- **Skipped / Marked submitted** — restore anything you removed by mistake.
+- **Course-name overrides** — when a course shows as "Course #id", set a
+  readable name manually.
+- **About → Diagnostics** — export a report if an item is missing or
+  misclassified.
 
-## 说明
+## Notes
 
-- 数据来自 Canvas 个人日历订阅（iCal），**不需要也不支持** Access Token
-  （UCLA Extension 禁止学生自助生成 Token）
-- 因为日历订阅不含「是否已提交」信息，已交的项需手动点「已交」清除
-- 订阅链接含你的私密标识，保存在 macOS 系统钥匙串，不外传
-- 重新打包：代码更新后再跑一次 `./build.sh` 覆盖即可
+- Data comes from your Canvas personal calendar feed (iCal). An access token
+  is **not used or supported**.
+- Because the calendar feed has no "submitted" status, completed items are
+  cleared manually via **Submitted**.
+- After updating the code, re-run `./build.sh` to rebuild the `.app`.
 
-## 开发者信息
+## Tech
 
-- 技术栈：Swift + SwiftUI + SwiftPM，零外部依赖，macOS 13+
-- 规范文档见 `docs/`，开发日志见 `dev-log/`，工作守则见 `CLAUDE.md`
+| | |
+|---|---|
+| Language | Swift 5.9 |
+| UI | SwiftUI (`MenuBarExtra`) |
+| Build | Swift Package Manager |
+| Min OS | macOS 13 |
+| Dependencies | None — system frameworks only |
+
+Source lives in `Sources/CanvasDeadlines/` (Models / Services / ViewModels /
+Views). Design and spec docs are in `docs/`; development history is in
+`dev-log/`; the contributor workflow is described in `CLAUDE.md`.
+
+## License
+
+No license is currently specified — all rights reserved by the author.
+</content>
+</invoke>
