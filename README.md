@@ -106,6 +106,6 @@ Views). Design and spec docs are in `docs/`; development history is in
 
 ## License
 
-No license is currently specified — all rights reserved by the author.
+Released under the [MIT License](LICENSE) © 2026 Ewan Wu.
 </content>
 </invoke>
