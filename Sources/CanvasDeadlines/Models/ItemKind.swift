@@ -11,6 +11,14 @@ enum ItemKind: String, Codable, Hashable {
         }
     }
 
+    /// SF Symbol 名（UI 用，比 emoji 更原生）
+    var symbol: String {
+        switch self {
+        case .assignment: return "doc.text.fill"
+        case .quiz: return "checklist"
+        }
+    }
+
     var label: String {
         switch self {
         case .assignment: return "作业"

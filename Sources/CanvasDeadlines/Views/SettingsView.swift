@@ -235,11 +235,29 @@ struct SettingsView: View {
     // MARK: - 关于
 
     private var aboutSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("关于").font(.subheadline.weight(.semibold))
             Text("Canvas Deadlines v1.0").font(.caption)
             Text("数据源：Canvas 日历订阅（iCal），无需 Token")
                 .font(.caption2).foregroundStyle(.secondary)
+
+            Divider().padding(.vertical, 2)
+
+            Text("排查工具").font(.caption.weight(.medium)).foregroundStyle(.secondary)
+            Text("如果某个作业没出现或分类不对，可导出诊断文件发给开发者。")
+                .font(.caption2).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                Task { await store.exportDiagnostics() }
+            } label: {
+                Label("导出诊断信息到桌面", systemImage: "ladybug")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+            if let msg = store.diagnosticsMessage {
+                Text(msg).font(.caption2).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

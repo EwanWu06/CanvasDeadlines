@@ -14,11 +14,17 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("欢迎使用 Canvas Deadlines")
-                .font(.headline)
-
-            Text("用 Canvas 的日历订阅链接，无需 Token：")
-                .font(.subheadline).foregroundStyle(.secondary)
+            HStack(spacing: 9) {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.tint)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("欢迎使用 Canvas Deadlines")
+                        .font(.system(size: 15, weight: .bold))
+                    Text("用日历订阅链接接入，无需 Token")
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+            }
 
             VStack(alignment: .leading, spacing: 6) {
                 step(1, "登录 Canvas")
@@ -37,6 +43,11 @@ struct OnboardingView: View {
                 step(4, "复制弹出的那个 .ics 链接")
                 step(5, "粘贴到下方输入框")
             }
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.secondary.opacity(0.08))
+            )
 
             TextField("粘贴 webcal:// 或 https://....ics 链接", text: $feedInput)
                 .textFieldStyle(.roundedBorder)
