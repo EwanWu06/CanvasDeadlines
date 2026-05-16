@@ -31,4 +31,18 @@ struct DeadlineItem: Identifiable, Hashable {
         if days == 1 { return "明天截止" }
         return "还剩 \(days) 天"
     }
+
+    /// 多校合并时给 id 加来源前缀，避免不同 Canvas 实例的 UID 撞号。
+    func prefixingID(_ prefix: String) -> DeadlineItem {
+        DeadlineItem(
+            id: "\(prefix)::\(id)",
+            kind: kind,
+            title: title,
+            courseId: courseId,
+            courseCode: courseCode,
+            dueAt: dueAt,
+            isSubmitted: isSubmitted,
+            htmlURL: htmlURL
+        )
+    }
 }

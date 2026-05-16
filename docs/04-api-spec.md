@@ -1,6 +1,10 @@
 # 04 · 数据源接入
 
-## 单一数据源：iCal 日历订阅
+## 数据源：iCal 日历订阅（多校）
+
+支持多个学校的 Canvas 订阅（UCLA Extension / SMC / WLAC…）。每条 `Feed{id,label,url}` 存 Keychain（JSON 数组）。`DeadlineStore.refresh()` 用 `withTaskGroup` 并发拉取所有源，各自解析+映射后合并；跨校 UID 用 `feed.id` 前缀去重（`DeadlineItem.prefixingID`）。某源失败不影响其它源，错误合并提示。过滤/课程名规则对每个源一致（均为 Instructure Canvas，UID 结构相同；新校若无 `[注册号]` 横幅则课程名回退，可用手动覆盖）。
+
+### 原（单源说明，逻辑同样适用于每个源）
 
 UCLA Extension 管理员**禁止学生自助生成 Access Token**（报错：「Your Canvas administrators have chosen to limit your ability to generate your own access token」）。因此本项目**只用 iCal 日历订阅**这一种数据源。Token/REST 方案的代码已于 2026-05-16 整体删除（`CanvasAPI.swift`/`CanvasDTOs.swift`/`Course.swift`）。
 

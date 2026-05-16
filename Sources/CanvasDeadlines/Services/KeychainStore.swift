@@ -17,11 +17,53 @@ enum KeychainStore {
     private static let service = "com.ewanwu.CanvasDeadlines"
     private static let feedAccount = "canvas-ical-feed-url"
 
-    // MARK: - iCal Feed URL（含私密 token，按凭据保护）
+    private static let feedsAccount = "canvas-ical-feeds-json"
 
-    static func saveFeedURL(_ url: String) throws { try set(url, account: feedAccount) }
-    static func loadFeedURL() -> String? { get(account: feedAccount) }
-    static func deleteFeedURL() throws { try remove(account: feedAccount) }
+    // MARK: - 多个 iCal 订阅源（含私密标识，按凭据保护）
+
+    static func loadFeeds() -> [Feed] {
+        // 新格式：JSON 数组
+        if let json = get(account: feedsAccount),
+           let data = json.data(using: .utf8),
+           let feeds = try? JSONDecoder().decode([Feed].self, from: data) {
+            return feeds
+        }
+        // 迁移：旧的单条 feed URL → 包成一条
+        if let legacy = get(account: feedAccount), !legacy.isEmpty {
+            let migrated = [Feed(label: "UCLA Extension", url: legacy)]
+            try? saveFeeds(migrated)
+            try? remove(account: feedAccount)
+            return migrated
+        }
+        return []
+    }
+
+    static func saveFeeds(_ feeds: [Feed]) throws {
+        let data = try JSONEncoder().encode(feeds)
+        guard let json = String(data: data, encoding: .utf8) else {
+            throw KeychainError.unexpectedData
+        }
+        try set(json, account: feedsAccount)
+    }
+
+    static func clearFeeds() throws {
+        try remove(account: feedsAccount)
+        try? remove(account: feedAccount)
+    }
+
+    // MARK: - 旧单条接口（Onboarding 首次保存仍可用，内部转为多源）
+
+    static func saveFeedURL(_ url: String) throws {
+        var feeds = loadFeeds()
+        if feeds.isEmpty {
+            feeds = [Feed(label: "我的 Canvas", url: url)]
+        } else {
+            feeds[0].url = url
+        }
+        try saveFeeds(feeds)
+    }
+    static func loadFeedURL() -> String? { loadFeeds().first?.url }
+    static func deleteFeedURL() throws { try clearFeeds() }
 
     // MARK: - Generic implementation
 

@@ -43,7 +43,8 @@
 ### Services/
 - **ICalParser.swift**：自实现 RFC 5545 解析器，零依赖
 - **ICalService.swift**：拉取 + 解析 .ics 订阅，映射为 [DeadlineItem]（唯一数据源）
-- **KeychainStore.swift**：凭据读写，account = `canvas-ical-feed-url`
+- **KeychainStore.swift**：凭据读写。多校订阅以 JSON 数组存 account=`canvas-ical-feeds-json`；自动迁移旧单条 `canvas-ical-feed-url`
+- **Models/Feed.swift**：`Feed{id,label,url}`，一个学校一条订阅
 - **SkipStore.swift**：含 `SkipStore`(跳过) / `SubmittedStore`(已提交，持久化) / `AppSettings`(URL+逆期天数+课程名覆盖)
 - **CLIRunner.swift**：`CANVAS_CLI=1` 测试模式（`--dump-ical` / `--test-keychain` / `--test-skipstore`）
 

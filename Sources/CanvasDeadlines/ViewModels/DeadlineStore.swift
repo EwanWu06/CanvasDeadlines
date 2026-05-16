@@ -34,14 +34,14 @@ final class DeadlineStore: ObservableObject {
     }
 
     private static func detectConfigured() -> Bool {
-        (KeychainStore.loadFeedURL() ?? "").isEmpty == false
+        !KeychainStore.loadFeeds().isEmpty
     }
 
     // MARK: - Public actions
 
     func refresh() async {
-        guard let feed = KeychainStore.loadFeedURL(), !feed.isEmpty,
-              let url = URL(string: feed) else {
+        let feeds = KeychainStore.loadFeeds()
+        guard !feeds.isEmpty else {
             isConfigured = false
             items = []
             return
@@ -49,28 +49,55 @@ final class DeadlineStore: ObservableObject {
         isConfigured = true
         isLoading = true
         lastError = nil
-        let service = ICalService(feedURL: url)
-        do {
-            cachedRaw = try await service.fetchDeadlines()
-            applyFilters()
-        } catch {
-            lastError = error.localizedDescription
-        }
+
+        let results: [(items: [DeadlineItem], error: String?)] =
+            await withTaskGroup(of: (items: [DeadlineItem], error: String?).self) { group in
+                for feed in feeds {
+                    group.addTask {
+                        guard let url = URL(string: feed.url) else {
+                            return ([], "「\(feed.label)」链接无效")
+                        }
+                        do {
+                            let raw = try await ICalService(feedURL: url).fetchDeadlines()
+                            // 跨校 UID 可能撞号，用 feed.id 前缀保证全局唯一
+                            let prefixed = raw.map { $0.prefixingID(feed.id.uuidString) }
+                            return (prefixed, nil)
+                        } catch {
+                            return ([], "「\(feed.label)」：\(error.localizedDescription)")
+                        }
+                    }
+                }
+                var acc: [(items: [DeadlineItem], error: String?)] = []
+                for await r in group { acc.append(r) }
+                return acc
+            }
+
+        cachedRaw = results.flatMap { $0.items }
+        let errors = results.compactMap { $0.error }
+        lastError = errors.isEmpty ? nil : errors.joined(separator: "\n")
+        applyFilters()
         isLoading = false
     }
 
-    /// 临时诊断：把 iCal 原始解析结果写到桌面文件，便于排查过滤规则
+    /// 临时诊断：把所有 iCal 源的原始解析结果写到桌面文件
     @Published var diagnosticsMessage: String? = nil
 
     func exportDiagnostics() async {
-        guard let feed = KeychainStore.loadFeedURL(),
-              let url = URL(string: feed) else {
+        let feeds = KeychainStore.loadFeeds()
+        guard !feeds.isEmpty else {
             diagnosticsMessage = "未配置日历订阅，无法导出。"
             return
         }
-        let service = ICalService(feedURL: url)
         do {
-            let report = try await service.debugDump()
+            var report = ""
+            for feed in feeds {
+                report += "\n========== 源：\(feed.label) ==========\n"
+                guard let url = URL(string: feed.url) else {
+                    report += "（链接无效）\n"
+                    continue
+                }
+                report += try await ICalService(feedURL: url).debugDump()
+            }
             let desktop = FileManager.default
                 .urls(for: .desktopDirectory, in: .userDomainMask).first
             let fileURL = (desktop ?? FileManager.default.temporaryDirectory)
@@ -115,6 +142,31 @@ final class DeadlineStore: ObservableObject {
         cachedRaw = []
     }
 
+    // MARK: - 多校订阅管理
+
+    var feeds: [Feed] { KeychainStore.loadFeeds() }
+
+    func addFeed(label: String, url: String) throws {
+        var list = KeychainStore.loadFeeds()
+        list.append(Feed(label: label, url: url))
+        try KeychainStore.saveFeeds(list)
+        isConfigured = true
+    }
+
+    func removeFeed(_ id: UUID) {
+        var list = KeychainStore.loadFeeds()
+        list.removeAll { $0.id == id }
+        try? KeychainStore.saveFeeds(list)
+        isConfigured = !list.isEmpty
+    }
+
+    func renameFeed(_ id: UUID, to label: String) {
+        var list = KeychainStore.loadFeeds()
+        guard let idx = list.firstIndex(where: { $0.id == id }) else { return }
+        list[idx].label = label
+        try? KeychainStore.saveFeeds(list)
+    }
+
     // MARK: - Derived views
 
     /// 按课程分组的视图数据
@@ -125,23 +177,41 @@ final class DeadlineStore: ObservableObject {
             .sorted { lhs, rhs in lhs.courseCode < rhs.courseCode }
     }
 
+    /// 设置里「已跳过/已标记提交」列表：同样套用逆期 3 天窗口（太久远的不再统计），
+    /// 排序为最上面最新（截止日期最晚）→ 下面最远（最早）。
     var skippedItems: [DeadlineItem] {
-        let skippedIds = SkipStore.all()
+        let ids = SkipStore.all()
         return cachedRaw
-            .filter { skippedIds.contains($0.id) }
-            .sorted(by: Self.dueOrder)
+            .filter { ids.contains($0.id) && withinGraceWindow($0) }
+            .sorted(by: Self.dueDescending)
+    }
+
+    var submittedItems: [DeadlineItem] {
+        let ids = SubmittedStore.all()
+        return cachedRaw
+            .filter { ids.contains($0.id) && withinGraceWindow($0) }
+            .sorted(by: Self.dueDescending)
     }
 
     // MARK: - Filtering
 
-    private func applyFilters() {
-        let skipped = SkipStore.all()
-        let submitted = SubmittedStore.all()
-        let cutoff = Calendar.current.date(
+    private var overdueCutoff: Date {
+        Calendar.current.date(
             byAdding: .day,
             value: -AppSettings.overdueGraceDays,
             to: Calendar.current.startOfDay(for: Date())
         ) ?? Date()
+    }
+
+    private func withinGraceWindow(_ item: DeadlineItem) -> Bool {
+        guard let due = item.dueAt else { return false }
+        return due >= overdueCutoff
+    }
+
+    private func applyFilters() {
+        let skipped = SkipStore.all()
+        let submitted = SubmittedStore.all()
+        let cutoff = overdueCutoff
 
         let filtered = cachedRaw.filter { item in
             guard let due = item.dueAt else { return false }
@@ -160,5 +230,10 @@ final class DeadlineStore: ObservableObject {
         // 都有 due_at 时按时间升序；其它情况已被过滤
         guard let da = a.dueAt, let db = b.dueAt else { return false }
         return da < db
+    }
+
+    private static func dueDescending(_ a: DeadlineItem, _ b: DeadlineItem) -> Bool {
+        guard let da = a.dueAt, let db = b.dueAt else { return false }
+        return da > db
     }
 }

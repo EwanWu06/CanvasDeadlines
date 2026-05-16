@@ -2,19 +2,27 @@ import SwiftUI
 
 struct DeadlineListView: View {
     @ObservedObject var store: DeadlineStore
+    @State private var showingSettings = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            content
-            Divider()
-            diagnosticsBar
-            footer
+        if showingSettings {
+            SettingsView(store: store, onClose: {
+                showingSettings = false
+                Task { await store.refresh() }
+            })
+        } else {
+            VStack(spacing: 0) {
+                header
+                Divider()
+                content
+                Divider()
+                diagnosticsBar
+                footer
+            }
+            .frame(width: 340)
+            .frame(maxHeight: 520)
+            .task { await store.refresh() }
         }
-        .frame(width: 340)
-        .frame(maxHeight: 520)
-        .task { await store.refresh() }
     }
 
     // MARK: - Sections
@@ -160,14 +168,12 @@ struct DeadlineListView: View {
 
             Spacer()
 
-            // 阶段 5 会接 Settings 弹窗，本阶段先占位
             Button {
-                // TODO 阶段 5
+                showingSettings = true
             } label: {
                 Label("设置", systemImage: "gearshape")
             }
             .buttonStyle(.borderless)
-            .disabled(true)
 
             Spacer()
 
