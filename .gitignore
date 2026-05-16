@@ -1,0 +1,13 @@
+# SwiftPM build output
+.build/
+.swiftpm/
+Package.resolved
+
+# macOS
+.DS_Store
+
+# Local Claude tooling settings (machine-specific)
+.claude/settings.local.json
+
+# Diagnostic exports
+CanvasDeadlines-诊断.txt
