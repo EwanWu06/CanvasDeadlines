@@ -6,6 +6,8 @@ struct SettingsView: View {
 
     @State private var canvasURL: String = AppSettings.canvasURL
     @State private var graceDays: Int = AppSettings.overdueGraceDays
+    @State private var launchAtLogin: Bool = LaunchAtLogin.isEnabled
+    @State private var launchError: String? = nil
     @State private var feedList: [Feed] = []
     @State private var newFeedLabel: String = ""
     @State private var newFeedURL: String = ""
@@ -78,6 +80,31 @@ struct SettingsView: View {
             Text("日历订阅看不到是否已交，太久远的历史项默认隐藏。0 = 不显示任何逆期项。")
                 .font(.caption2).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            Divider().padding(.vertical, 2)
+
+            Toggle(isOn: $launchAtLogin) {
+                Text("开机时自动启动").font(.caption)
+            }
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .onChange(of: launchAtLogin) { newValue in
+                do {
+                    try LaunchAtLogin.setEnabled(newValue)
+                    launchError = nil
+                } catch {
+                    launchError = error.localizedDescription
+                    launchAtLogin = LaunchAtLogin.isEnabled // 回退到真实状态
+                }
+            }
+            Text("勾选后开机登录会自动启动。注意：需从打包好的 App 运行才生效，Xcode 调试运行无效。")
+                .font(.caption2).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let e = launchError {
+                Text("设置失败：\(e)")
+                    .font(.caption2).foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
